@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<!-- saved from url=(0049)file:///Users/blacktiger/Downloads/metronome.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메트로놈</title>
+<link href="./Index_files/css2" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --card: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #e8c84a;
+    --accent2: #c4a832;
+    --text: #f0f0f0;
+    --muted: #666;
+    --beat1: #e8c84a;
+    --beat2: #888;
+    --danger: #e85a4a;
+    --success: #4ae87a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    padding: 24px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 4px;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text); }
+
+  .main-wrap {
+    display: flex;
+    width: 100%;
+    max-width: 1100px;
+    gap: 32px;
+    padding: 32px 24px;
+    align-items: flex-start;
+  }
+
+  /* ── 메트로놈 패널 ── */
+  .metro-panel {
+    flex: 0 0 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .pendulum-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pendulum-wrap::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .pendulum-wrap.playing::before { opacity: 1; }
+
+  .pendulum-svg {
+    width: 160px;
+    height: 180px;
+  }
+
+  .pendulum-arm {
+    transform-origin: 80px 20px;
+    animation: none;
+  }
+
+  .pendulum-arm.swing-right {
+    animation: swingRight var(--swing-dur) ease-in-out forwards;
+  }
+  .pendulum-arm.swing-left {
+    animation: swingLeft var(--swing-dur) ease-in-out forwards;
+  }
+
+  @keyframes swingRight {
+    0%   { transform: rotate(-35deg); }
+    100% { transform: rotate(35deg); }
+  }
+  @keyframes swingLeft {
+    0%   { transform: rotate(35deg); }
+    100% { transform: rotate(-35deg); }
+  }
+
+  .bpm-display {
+    text-align: center;
+  }
+
+  .bpm-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 5rem;
+    line-height: 1;
+    color: var(--accent);
+    transition: transform .05s;
+  }
+  .bpm-number.pulse { transform: scale(1.06); }
+
+  .bpm-label {
+    font-size: .7rem;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .tempo-name {
+    font-size: .85rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* 비트 표시 */
+  .beat-dots {
+    display: flex;
+    gap: 10px;
+  }
+
+  .beat-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background .05s, transform .05s;
+  }
+
+  .beat-dot.active {
+    background: var(--beat1);
+    transform: scale(1.4);
+    box-shadow: 0 0 8px var(--beat1);
+  }
+
+  .beat-dot.sub-active {
+    background: var(--beat2);
+    transform: scale(1.2);
+  }
+
+  /* BPM 슬라이더 */
+  .bpm-slider-wrap {
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .bpm-slider-wrap input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .bpm-slider-wrap input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(232,200,74,.5);
+  }
+
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: .7rem;
+    color: var(--muted);
+  }
+
+  /* 박자 선택 */
+  .sig-wrap {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .sig-btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .sig-btn:hover { border-color: var(--accent); color: var(--text); }
+  .sig-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+  /* 컨트롤 버튼 */
+  .ctrl-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .15s;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+
+  .btn-play {
+    background: var(--accent);
+    color: #000;
+    font-size: 1rem;
+  }
+  .btn-play:hover { background: #f0d060; }
+  .btn-play.active { background: var(--danger); color: #fff; }
+
+  .btn-sec {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-sec:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 플레이리스트 ── */
+  .playlist-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+
+  .count-badge {
+    font-size: .75rem;
+    color: var(--muted);
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  /* 추가 폼 */
+  .add-form {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px auto;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .form-input {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted); }
+
+  .form-input[type=number]::-webkit-outer-spin-button,
+  .form-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  .btn-add {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: .85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #f0d060; }
+
+  /* 곡 리스트 */
+  .song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .song-list::-webkit-scrollbar { width: 4px; }
+  .song-list::-webkit-scrollbar-track { background: transparent; }
+  .song-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .song-item {
+    display: grid;
+    grid-template-columns: 36px 1fr 80px 80px auto auto;
+    gap: 10px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: all .15s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .song-item:hover { border-color: #444; }
+
+  .song-item.current {
+    border-color: var(--accent);
+    background: rgba(232,200,74,.06);
+  }
+
+  .song-item.current::before {
+    content: '▶';
+    position: absolute;
+    left: -18px;
+    color: var(--accent);
+    font-size: .7rem;
+  }
+
+  .song-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .song-item.current .song-num { color: var(--accent); }
+
+  .song-name {
+    font-size: .9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .song-bpm {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  .song-sig {
+    font-size: .75rem;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color .15s;
+    line-height: 1;
+  }
+
+  .icon-btn:hover { color: var(--text); }
+  .icon-btn.del:hover { color: var(--danger); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: .85rem;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  /* 순서 이동 버튼 */
+  .move-btns { display: flex; flex-direction: column; gap: 2px; }
+  .move-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: .6rem;
+    padding: 1px 4px;
+    line-height: 1;
+    transition: color .15s;
+  }
+  .move-btn:hover { color: var(--accent); }
+
+  /* 자동 재생 토글 */
+  .auto-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+
+  .toggle {
+    position: relative;
+    width: 38px; height: 20px;
+    cursor: pointer;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    transition: background .2s;
+  }
+
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+  }
+
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+  /* 반응형 */
+  @media (max-width: 700px) {
+    .main-wrap { flex-direction: column; padding: 16px; }
+    .metro-panel { flex: none; width: 100%; }
+    .add-form { grid-template-columns: 1fr 1fr; }
+    .btn-add { grid-column: 1/-1; }
+    .song-item { grid-template-columns: 28px 1fr 60px 60px auto; }
+    .move-btns { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">METRO<span>BEAT</span></div>
+</header>
+
+<div class="main-wrap">
+
+  <!-- 메트로놈 패널 -->
+  <div class="metro-panel">
+    <div class="pendulum-wrap" id="pendulumWrap">
+      <svg class="pendulum-svg" viewBox="0 0 160 180">
+        <!-- 피벗 -->
+        <circle cx="80" cy="20" r="5" fill="#444"></circle>
+        <!-- 진자 -->
+        <g class="pendulum-arm" id="pendulumArm">
+          <line x1="80" y1="20" x2="80" y2="148" stroke="#555" stroke-width="2.5"></line>
+          <circle cx="80" cy="152" r="16" fill="none" stroke="#e8c84a" stroke-width="2.5"></circle>
+          <circle cx="80" cy="152" r="6" fill="#e8c84a"></circle>
+        </g>
+        <!-- 눈금 -->
+        <line x1="42" y1="20" x2="118" y2="20" stroke="#2a2a2a" stroke-width="1"></line>
+      </svg>
+
+      <div class="bpm-display">
+        <div class="bpm-number" id="bpmDisplay">72</div>
+        <div class="bpm-label">BPM</div>
+        <div class="tempo-name" id="tempoName">Adagio</div>
+      </div>
+
+      <div class="beat-dots" id="beatDots"><div class="beat-dot" id="dot0"></div><div class="beat-dot" id="dot1"></div><div class="beat-dot" id="dot2"></div><div class="beat-dot" id="dot3"></div></div>
+
+      <div class="bpm-slider-wrap">
+        <input type="range" id="bpmSlider" min="30" max="300" value="120">
+        <div class="slider-labels"><span>30</span><span>300</span></div>
+      </div>
+
+      <!-- 박자 -->
+      <div class="sig-wrap" id="sigWrap">
+        <button class="sig-btn active" data-sig="4">4/4</button>
+        <button class="sig-btn" data-sig="3">3/4</button>
+        <button class="sig-btn" data-sig="2">2/4</button>
+        <button class="sig-btn" data-sig="6">6/8</button>
+        <button class="sig-btn" data-sig="1">자유</button>
+      </div>
+
+      <div class="ctrl-row">
+        <button class="btn btn-play" id="playBtn" onclick="togglePlay()">▶ 시작</button>
+      </div>
+      <div class="ctrl-row">
+        <button class="btn btn-sec" onclick="prevSong()">◀ 이전 곡</button>
+        <button class="btn btn-sec" onclick="nextSong()">다음 곡 ▶</button>
+      </div>
+      <div class="auto-row">
+        <label class="toggle">
+          <input type="checkbox" id="autoNext" checked="">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+        자동으로 다음 곡 재생
+        <input type="number" id="autoDelay" value="4" min="1" max="60" style="width:44px;padding:3px 6px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:4px;font-size:.8rem;outline:none;text-align:center;">
+        <span style="font-size:.75rem">마디 후</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 플레이리스트 패널 -->
+  <div class="playlist-panel">
+    <div class="panel-header">
+      <div class="panel-title">PLAYLIST</div>
+      <div class="count-badge" id="countBadge">3 / 20</div>
+    </div>
+
+    <div class="add-form">
+      <input class="form-input" type="text" id="newName" placeholder="곡 이름" maxlength="40">
+      <input class="form-input" type="number" id="newBpm" placeholder="BPM" min="30" max="300">
+      <select class="form-input" id="newSig">
+        <option value="4">4/4</option>
+        <option value="3">3/4</option>
+        <option value="2">2/4</option>
+        <option value="6">6/8</option>
+        <option value="1">자유</option>
+      </select>
+      <button class="btn-add" onclick="addSong()">+ 추가</button>
+    </div>
+
+    <div class="song-list" id="songList">
+    <div class="song-item current" onclick="selectSong(0)">
+      <div class="song-num">1</div>
+      <div class="song-name">연습 1 - Adagio</div>
+      <div class="song-bpm">72</div>
+      <div class="song-sig">4/4</div>
+      <div class="move-btns">
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(0,-1)">▲</button>
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(0,1)">▼</button>
+      </div>
+      <button class="icon-btn del" onclick="event.stopPropagation();deleteSong(0)">✕</button>
+    </div>
+  
+    <div class="song-item " onclick="selectSong(1)">
+      <div class="song-num">2</div>
+      <div class="song-name">연습 2 - Moderato</div>
+      <div class="song-bpm">100</div>
+      <div class="song-sig">4/4</div>
+      <div class="move-btns">
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(1,-1)">▲</button>
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(1,1)">▼</button>
+      </div>
+      <button class="icon-btn del" onclick="event.stopPropagation();deleteSong(1)">✕</button>
+    </div>
+  
+    <div class="song-item " onclick="selectSong(2)">
+      <div class="song-num">3</div>
+      <div class="song-name">왈츠 연습</div>
+      <div class="song-bpm">138</div>
+      <div class="song-sig">3/4</div>
+      <div class="move-btns">
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(2,-1)">▲</button>
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(2,1)">▼</button>
+      </div>
+      <button class="icon-btn del" onclick="event.stopPropagation();deleteSong(2)">✕</button>
+    </div>
+  </div>
+  </div>
+
+</div>
+
+<script>
+// ── 상태 ──
+let songs = [];
+let currentIdx = 0;
+let isPlaying = false;
+let beatNum = 0;
+let beatsPerBar = 4;
+let barCount = 0;
+let intervalId = null;
+let audioCtx = null;
+let swingDir = 1;
+let pendulumArm;
+
+// ── 오디오 ──
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playClick(accent) {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = accent ? 1200 : 800;
+  gain.gain.setValueAtTime(accent ? 0.6 : 0.35, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.08);
+}
+
+// ── BPM/템포 이름 ──
+function tempoName(bpm) {
+  if (bpm < 60) return 'Largo';
+  if (bpm < 66) return 'Larghetto';
+  if (bpm < 76) return 'Adagio';
+  if (bpm < 108) return 'Andante';
+  if (bpm < 120) return 'Moderato';
+  if (bpm < 156) return 'Allegro';
+  if (bpm < 176) return 'Vivace';
+  if (bpm < 200) return 'Presto';
+  return 'Prestissimo';
+}
+
+// ── 박자 표시 ──
+function buildBeatDots(n) {
+  const wrap = document.getElementById('beatDots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot';
+    d.id = 'dot' + i;
+    wrap.appendChild(d);
+  }
+}
+
+function flashDot(idx, sig) {
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active', 'sub-active'));
+  const dot = document.getElementById('dot' + idx);
+  if (dot) dot.classList.add(idx === 0 ? 'active' : 'sub-active');
+}
+
+// ── BPM 표시 업데이트 ──
+function updateBpmUI(bpm) {
+  const el = document.getElementById('bpmDisplay');
+  el.textContent = bpm;
+  el.classList.add('pulse');
+  setTimeout(() => el.classList.remove('pulse'), 80);
+  document.getElementById('tempoName').textContent = tempoName(bpm);
+  document.getElementById('bpmSlider').value = bpm;
+}
+
+// ── 진자 애니메이션 ──
+function swingPendulum(bpm) {
+  const dur = 60000 / bpm / 1000;
+  const arm = document.getElementById('pendulumArm');
+  arm.style.setProperty('--swing-dur', dur + 's');
+  arm.className = 'pendulum-arm';
+  void arm.offsetWidth;
+  arm.className = 'pendulum-arm ' + (swingDir > 0 ? 'swing-right' : 'swing-left');
+  swingDir *= -1;
+}
+
+// ── 메트로놈 틱 ──
+function tick() {
+  const bpm = getCurrentBpm();
+  playClick(beatNum === 0);
+  flashDot(beatNum, beatsPerBar);
+  swingPendulum(bpm);
+
+  // BPM 표시 펄스 (첫 박자에만)
+  if (beatNum === 0) {
+    const el = document.getElementById('bpmDisplay');
+    el.classList.add('pulse');
+    setTimeout(() => el.classList.remove('pulse'), 80);
+  }
+
+  beatNum = (beatNum + 1) % beatsPerBar;
+
+  // 마디 완료
+  if (beatNum === 0) {
+    barCount++;
+    const autoDelay = parseInt(document.getElementById('autoDelay').value) || 4;
+    if (document.getElementById('autoNext').checked && songs.length > 1 && barCount >= autoDelay) {
+      barCount = 0;
+      goNextSong();
+    }
+  }
+}
+
+function getCurrentBpm() {
+  if (songs.length > 0 && currentIdx < songs.length) return songs[currentIdx].bpm;
+  return parseInt(document.getElementById('bpmSlider').value);
+}
+
+function startMetronome(bpm) {
+  stopMetronome();
+  beatNum = 0;
+  barCount = 0;
+  const interval = 60000 / bpm;
+  tick();
+  intervalId = setInterval(tick, interval);
+}
+
+function stopMetronome() {
+  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('active', 'sub-active'));
+  document.getElementById('pendulumArm').className = 'pendulum-arm';
+}
+
+// ── 재생 토글 ──
+function togglePlay() {
+  isPlaying = !isPlaying;
+  const btn = document.getElementById('playBtn');
+  const wrap = document.getElementById('pendulumWrap');
+  if (isPlaying) {
+    btn.textContent = '■ 정지';
+    btn.classList.add('active');
+    wrap.classList.add('playing');
+    loadCurrentSong();
+    startMetronome(getCurrentBpm());
+  } else {
+    btn.textContent = '▶ 시작';
+    btn.classList.remove('active');
+    wrap.classList.remove('playing');
+    stopMetronome();
+  }
+}
+
+// ── 곡 로드 ──
+function loadCurrentSong() {
+  if (songs.length === 0) return;
+  const s = songs[currentIdx];
+  updateBpmUI(s.bpm);
+  beatsPerBar = s.sig;
+  buildBeatDots(beatsPerBar);
+  // 박자 버튼 업데이트
+  document.querySelectorAll('.sig-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.sig) === beatsPerBar);
+  });
+  renderList();
+}
+
+function goNextSong() {
+  currentIdx = (currentIdx + 1) % songs.length;
+  loadCurrentSong();
+  if (isPlaying) {
+    stopMetronome();
+    setTimeout(() => startMetronome(getCurrentBpm()), 200);
+  }
+}
+
+function prevSong() {
+  if (songs.length === 0) return;
+  currentIdx = (currentIdx - 1 + songs.length) % songs.length;
+  loadCurrentSong();
+  if (isPlaying) { stopMetronome(); startMetronome(getCurrentBpm()); }
+}
+
+function nextSong() {
+  if (songs.length === 0) return;
+  goNextSong();
+}
+
+// ── 슬라이더 ──
+document.getElementById('bpmSlider').addEventListener('input', function() {
+  const bpm = parseInt(this.value);
+  document.getElementById('bpmDisplay').textContent = bpm;
+  document.getElementById('tempoName').textContent = tempoName(bpm);
+  if (songs.length > 0) {
+    songs[currentIdx].bpm = bpm;
+    renderList();
+  }
+  if (isPlaying) { stopMetronome(); startMetronome(bpm); }
+});
+
+// ── 박자 버튼 ──
+document.getElementById('sigWrap').addEventListener('click', function(e) {
+  if (!e.target.classList.contains('sig-btn')) return;
+  document.querySelectorAll('.sig-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  beatsPerBar = parseInt(e.target.dataset.sig);
+  buildBeatDots(beatsPerBar);
+  if (songs.length > 0) {
+    songs[currentIdx].sig = beatsPerBar;
+    renderList();
+  }
+  beatNum = 0;
+  if (isPlaying) { stopMetronome(); startMetronome(getCurrentBpm()); }
+});
+
+// ── 곡 추가 ──
+function addSong() {
+  if (songs.length >= 20) { alert('최대 20곡까지 추가할 수 있어요.'); return; }
+  const name = document.getElementById('newName').value.trim() || '제목 없음';
+  const bpm = parseInt(document.getElementById('newBpm').value);
+  const sig = parseInt(document.getElementById('newSig').value);
+  if (!bpm || bpm < 30 || bpm > 300) { alert('BPM을 30~300 사이로 입력해주세요.'); return; }
+  songs.push({ name, bpm, sig });
+  document.getElementById('newName').value = '';
+  document.getElementById('newBpm').value = '';
+  if (songs.length === 1) { currentIdx = 0; loadCurrentSong(); }
+  renderList();
+}
+
+// ── 곡 삭제 ──
+function deleteSong(idx) {
+  songs.splice(idx, 1);
+  if (currentIdx >= songs.length) currentIdx = Math.max(0, songs.length - 1);
+  if (songs.length > 0) loadCurrentSong();
+  else {
+    stopMetronome();
+    isPlaying = false;
+    document.getElementById('playBtn').textContent = '▶ 시작';
+    document.getElementById('playBtn').classList.remove('active');
+    document.getElementById('pendulumWrap').classList.remove('playing');
+  }
+  renderList();
+}
+
+// ── 곡 이동 ──
+function moveSong(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= songs.length) return;
+  [songs[idx], songs[newIdx]] = [songs[newIdx], songs[idx]];
+  if (currentIdx === idx) currentIdx = newIdx;
+  else if (currentIdx === newIdx) currentIdx = idx;
+  renderList();
+}
+
+// ── 곡 선택 ──
+function selectSong(idx) {
+  currentIdx = idx;
+  loadCurrentSong();
+  if (isPlaying) { stopMetronome(); startMetronome(getCurrentBpm()); }
+}
+
+// ── 리스트 렌더 ──
+function renderList() {
+  const list = document.getElementById('songList');
+  document.getElementById('countBadge').textContent = songs.length + ' / 20';
+  if (songs.length === 0) {
+    list.innerHTML = '<div class="empty-state">곡을 추가해보세요.<br>최대 20곡까지 등록할 수 있어요.</div>';
+    return;
+  }
+  const sigLabel = { 1: '자유', 2: '2/4', 3: '3/4', 4: '4/4', 6: '6/8' };
+  list.innerHTML = songs.map((s, i) => `
+    <div class="song-item ${i === currentIdx ? 'current' : ''}" onclick="selectSong(${i})">
+      <div class="song-num">${i + 1}</div>
+      <div class="song-name">${escHtml(s.name)}</div>
+      <div class="song-bpm">${s.bpm}</div>
+      <div class="song-sig">${sigLabel[s.sig] || s.sig + '/4'}</div>
+      <div class="move-btns">
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(${i},-1)">▲</button>
+        <button class="move-btn" onclick="event.stopPropagation();moveSong(${i},1)">▼</button>
+      </div>
+      <button class="icon-btn del" onclick="event.stopPropagation();deleteSong(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── 초기화 ──
+buildBeatDots(4);
+updateBpmUI(120);
+renderList();
+
+// 샘플 곡 프리셋
+const samples = [
+  { name: '연습 1 - Adagio', bpm: 72, sig: 4 },
+  { name: '연습 2 - Moderato', bpm: 100, sig: 4 },
+  { name: '왈츠 연습', bpm: 138, sig: 3 },
+];
+samples.forEach(s => { songs.push(s); });
+currentIdx = 0;
+loadCurrentSong();
+</script>
+
+
+</body></html>
